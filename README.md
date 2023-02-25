@@ -4,6 +4,8 @@ After more than 20 years away from the MUD development community, Danj has retur
 ## Danj_StatViz
 This plugin allows you to visualize the 6 base trained stats (STR, INT, WIS, DEX, CON, LUK) on a spider graph in a mini window.
 
+![Screenshot of the stats visualization plugin](danj_statviz_screenshot.png)
+
 * `sv on` turns it on and updates it from `train` output.
 * `sv off` turns it off.
 * `sv update` updates it from `train` output if you already have the mini window open.
