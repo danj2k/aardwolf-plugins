@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+
+<!-- Plugin "Danj_StatViz" written by Danj 2023-02-25 -->
+
+<muclient>
+    <plugin name="Danj_StatViz" author="Danj" id="89201300979e4ceba2129e51" language="Lua" purpose="Displays the 6 basic stats on a spider graph" save_state="y" date_written="2023-02-25" requires="4.90" version="1.0">
+
+    </plugin>
+
+    <!--  Script  -->
+    <script>
+        <![CDATA[
+require "themed_miniwindows"
+require "aardwolf_colors"
+require "wrapped_captures"
+
+-- Constants
+-- Stats.
+Stat_Names = {
+    "STR",
+    "INT",
+    "WIS",
+    "DEX",
+    "CON",
+    "LUK"
+}
+Stat_FullNames = {
+    "Strength",
+    "Intelligence",
+    "Wisdom",
+    "Dexterity",
+    "Constitution",
+    "Luck"
+}
+-- Angle values for each stat in degrees.
+Stat_Axes = {
+    STR = 270,       -- top
+    INT = 330,
+    WIS = 30,
+    DEX = 90,      -- bottom
+    CON = 150,
+    LUK = 210
+}
+
+-- Variables
+-- Initial stat values
+Stat_Values = {
+    STR = {
+        current = 0,
+        maximum = 400
+    },
+    INT = {
+        current = 0,
+        maximum = 400
+    },
+    WIS = {
+        current = 0,
+        maximum = 400
+    },
+    DEX = {
+        current = 0,
+        maximum = 400
+    },
+    CON = {
+        current = 0,
+        maximum = 400
+    },
+    LUK = {
+        current = 0,
+        maximum = 400
+    }
+}
+
+-- This function converts polar coordinates (r, phi) to Cartesian coordinates (x,y).
+-- Note that phi is in degrees and runs clockwise from the horizontal axis.
+-- https://en.wikipedia.org/wiki/Polar_coordinate_system#Converting_between_polar_and_Cartesian_coordinates
+local function polar_to_cartesian(
+    r,      -- the radius or distance from the pole
+    phi     -- the angle or direction in degrees
+)
+    local x, y
+
+    phi = math.rad(phi)     -- Convert angle from degrees to radians
+    x = r * math.cos(phi)   -- x = r cos phi
+    y = r * math.sin(phi)   -- y = r sin phi
+
+    return x, y
+end
+
+-- This function works out where the pole of our spider graph should be.
+local function find_pole()
+    local pole_x, pole_y, fontheight
+
+    fontheight = WindowFontInfo(                    -- get the font height
+        My_Window.id,
+        "f",                                        -- id of the font loaded earlier
+        1                                           -- this specifies we want to know height
+    )
+
+    pole_x = (My_Window.bodyright - My_Window.bodyleft) / 2                  -- centre of the window's body
+    pole_y = ((My_Window.bodybottom - My_Window.bodytop) / 2) + fontheight   -- don't forget to offset for the top label
+
+    return pole_x, pole_y
+end
+
+-- This function draws the plot area of our spider graph.
+local function draw_plot_area()
+    local pole_x, pole_y
+    local plotarea = {
+        top = 0,
+        bottom = 0,
+        left = 0,
+        right = 0
+    }
+    local fontheight, fontwidth
+    local axis_x, axis_y
+    local r, phi1, phi2, stat1, stat2
+    local gridfrom_x, gridfrom_y, gridto_x, gridto_y
+    local label_x, label_y
+
+    -- Axis calculations
+    pole_x, pole_y = find_pole()                    -- find the pole
+    fontheight = WindowFontInfo(                    -- get the font height
+        My_Window.id,
+        "f",                                        -- id of the font loaded earlier
+        1                                           -- this specifies we want to know height
+    )
+    plotarea.top    =   My_Window.bodytop + 20 + fontheight     -- allow space for top axis label
+    plotarea.bottom =   My_Window.bodybottom - 20 - fontheight  -- allow space for bottom axis label
+    plotarea.left   =   My_Window.bodyleft + 20
+    plotarea.right  =   My_Window.bodyright - 20
+    if (plotarea.bottom - plotarea.top) < (plotarea.right - plotarea.left) then
+        Axis_Length = (plotarea.bottom - plotarea.top) / 2
+    else
+        Axis_Length = (plotarea.right - plotarea.left) / 2
+    end
+    -- Draw axes
+    for k, v in pairs(Stat_Axes) do
+        axis_x, axis_y = polar_to_cartesian(Axis_Length, v) -- get the x,y coordinates for the end of the axis
+        axis_x = axis_x + pole_x                            -- don't forget to offset from the pole
+        axis_y = axis_y + pole_y                            -- don't forget to offset from the pole
+        WindowLine(
+            My_Window.id,                                   -- my window's id
+            pole_x, pole_y,                                 -- draw from the pole
+            axis_x, axis_y,                                 -- draw to the end of the axis
+            ColourNameToRGB("white"),                       -- white line
+            miniwin.pen_solid,                              -- solid
+            2                                               -- line width
+        )
+    end
+    -- Draw gridlines
+    for percent = 0.2,1.0,0.2 do
+        r = Axis_Length * percent                                   -- gridlines at 20%, 40%, 60%, 80% and 100% of maximum
+        for i = 1,6 do
+            stat1 = Stat_Names[i]
+            if i == 6 then
+                stat2 = Stat_Names[1]
+            else
+                stat2 = Stat_Names[i+1]
+            end
+            phi1 = Stat_Axes[stat1]
+            phi2 = Stat_Axes[stat2]
+            gridfrom_x, gridfrom_y  = polar_to_cartesian(r, phi1)   -- start of gridline
+            gridto_x, gridto_y      = polar_to_cartesian(r, phi2)   -- end of gridline
+            gridfrom_x  = gridfrom_x + pole_x                       -- don't forget to offset from the pole
+            gridto_x    = gridto_x + pole_x
+            gridfrom_y  = gridfrom_y + pole_y
+            gridto_y    = gridto_y + pole_y
+            WindowLine(
+                My_Window.id,
+                gridfrom_x, gridfrom_y,
+                gridto_x, gridto_y,
+                ColourNameToRGB("grey"),
+                miniwin.pen_dot,
+                1
+            )
+        end
+    end
+    -- Label axes
+    for i = 1,6 do
+        label_x, label_y = polar_to_cartesian(Axis_Length, Stat_Axes[Stat_Names[i]])    -- this is where the end of the axis is, we want this to be bottom centre of our text rectangle
+        label_x = label_x + pole_x                                                      -- don't forget to offset from the pole
+        label_y = label_y + pole_y                                                      -- don't forget to offset from the pole
+        fontwidth = WindowTextWidth(                                                    -- width of label string
+            My_Window.id,
+            "f",
+            Stat_Names[i]
+        )
+        if math.floor(label_x) < pole_x then
+            label_x = label_x - fontwidth                                               -- left if label is to the left of the pole
+        elseif math.floor(label_x) > pole_x then
+            label_x = label_x + fontwidth                                               -- right if label is to the right of the pole
+        else
+            label_x = label_x - (fontwidth / 2)                                         -- centre if the label is on the pole
+        end
+        if label_y < pole_y then                                                        -- top has to be different for labels above the pole and below the pole
+            label_y = label_y - fontheight
+        end
+        WindowText(
+            My_Window.id,                                                           -- my window's id
+            "f",                                                                    -- font loaded earlier
+            Stat_Names[i],                                                          -- label
+            label_x, label_y,                                                       -- top left of label
+            (label_x + fontwidth), (label_y + fontheight),                          -- bottom right of label
+            ColourNameToRGB("white"),                                               -- colour of label
+            false                                                                   -- not Unicode
+        )
+    end
+end
+
+-- This function plots our spider graph.
+local function plot_stats()
+    local phi, r, x, y
+    local pole_x, pole_y
+    local polygon_points = ""
+
+    pole_x, pole_y = find_pole()
+    -- Calculations
+    for i = 1,6 do
+        phi = Stat_Axes[Stat_Names[i]]
+        r = Axis_Length * (Stat_Values[Stat_Names[i]].current / Stat_Values[Stat_Names[i]].maximum)
+        x, y = polar_to_cartesian(r, phi)
+        x = x + pole_x
+        y = y + pole_y
+        x = math.floor(x+0.5)
+        y = math.floor(y+0.5)
+        if polygon_points == "" then
+            polygon_points = x .. "," .. y
+        else
+            polygon_points = polygon_points .. "," .. x .. "," .. y
+        end
+    end
+    -- Draw our polygon
+    WindowPolygon(
+        My_Window.id,
+        polygon_points,
+        ColourNameToRGB("lime"),        miniwin.pen_solid,  3,      -- outline
+        ColourNameToRGB("darkgreen"),   miniwin.brush_hatch_cross_diagonal,        -- fill inside
+        true,
+        false
+    )
+end
+
+-- This function draws our window content.
+local function my_draw()
+    My_Window:blank()           -- clear the window
+    draw_plot_area()            -- draw the plot area
+    plot_stats()                -- plot the graph
+end
+
+-- This function creates the miniwindow.
+local function build_window()
+    My_Window = ThemedBasicWindow(
+        "Danj_StatViz",         -- window id
+        100,                    -- top
+        100,                    -- left
+        300,                    -- width
+        300,                    -- height
+        "Stats Visualization",  -- title
+        "center",               -- title alignment
+        true,                   -- it's a temporary window
+        1,                      -- resizer type 1 (2 is only for use with scrollbars and this window will never have a scrollbar)
+        my_draw,                -- draw our window content while resizing
+        my_draw                 -- draw our window content after resizing
+    )
+    WindowFont(                 -- load a font, because we can't get text metrics without doing this
+        My_Window.id,           -- my window's id
+        "f",                    -- font id
+        "Trebuchet MS",         -- font name
+        8,                      -- font size (points)
+        false,                  -- no bold
+        false,                  -- no italics
+        false,                  -- no underline
+        false                   -- no strikethrough
+    )
+    my_draw()                   -- draw our window content
+    My_Window:dress_window()    -- add the window dressing
+end
+
+-- This is the callback function for capturing train output.
+local function train_capture_callback(
+    captured_styles,
+    start_line,
+    end_line
+)
+    local train_output = utils.split(strip_colours_from_styles(captured_styles), "\n")  -- strip colours and split the output into a table
+    local current, maximum
+
+    for k, v in pairs(train_output) do
+        if string.find(v, ":") then                                                     -- we're only interested in lines with a colon
+            for i = 1, 6 do
+                if string.find(v, Stat_FullNames[i]) then
+                    _, _, current, maximum = string.find(v, "(%d+)%s+(%d+)$")
+                    Stat_Values[Stat_Names[i]].current = current
+                    Stat_Values[Stat_Names[i]].maximum = maximum
+                end
+            end
+        end
+    end
+
+    if My_Window and My_Window.id then
+        my_draw()                   -- draw our window content
+        My_Window:dress_window()    -- add the window dressing
+    end
+end
+
+-- This is the function to capture train output.
+function Sv_update()
+    Capture.untagged_output(
+        "train",
+        true,
+        true,
+        true,
+        train_capture_callback,
+        nil,
+        train_capture_callback
+    )
+end
+
+-- This is the function to display the window and update stats.
+function Sv_on()
+    build_window()
+    Sv_update()
+end
+
+-- This is the function to remove the window.
+function Sv_off()
+    if My_Window and My_Window.id then
+        WindowDelete(My_Window.id)
+    end
+end
+
+-- This is the function to display help information.
+function Sv_help()
+    ColourNote("orange", "", "Stats Visualization help")
+    ColourNote("orange", "", "========================")
+    ColourNote("orange", "", "sv on|off         -- show or hide the stats visualization window")
+    ColourNote("orange", "", "sv update         -- update the stats visualisation window with the latest data from \"train\" output")
+    ColourNote("orange", "", "sv help           -- display help information")
+end
+
+-- On plugin install, display help information and set up aliases.
+function OnPluginInstall()
+    Sv_help()
+    AddAlias(
+        "sv_on",
+        "sv on",
+        "Sv_on()",
+        alias_flag.Enabled,
+        ""
+    )
+    SetAliasOption(
+        "sv_on",
+        "send_to",
+        sendto.scriptafteromit
+    )
+    AddAlias(
+        "sv_off",
+        "sv off",
+        "Sv_off()",
+        alias_flag.Enabled,
+        ""
+    )
+    SetAliasOption(
+        "sv_off",
+        "send_to",
+        sendto.scriptafteromit
+    )
+    AddAlias(
+        "sv_update",
+        "sv update",
+        "Sv_update()",
+        alias_flag.Enabled,
+        ""
+    )
+    SetAliasOption(
+        "sv_update",
+        "send_to",
+        sendto.scriptafteromit
+    )
+    AddAlias(
+        "sv_help",
+        "sv help",
+        "Sv_help()",
+        alias_flag.Enabled,
+        ""
+    )
+    SetAliasOption(
+        "sv_help",
+        "send_to",
+        sendto.scriptafteromit
+    )
+end
+
+-- On plugin disable, remove the window and aliases
+function OnPluginDisable()
+    Sv_off()
+    DeleteAlias("sv_on")
+    DeleteAlias("sv_off")
+    DeleteAlias("sv_update")
+    DeleteAlias("sv_help")
+end
+
+function OnPluginClose()
+    OnPluginDisable()
+end
+        ]]>
+    </script>
+</muclient>
