@@ -187,15 +187,16 @@ local function draw_plot_area()
             "f",
             Stat_Names[i]
         )
-        if math.floor(label_x) < pole_x then
-            label_x = label_x - fontwidth                                               -- left if label is to the left of the pole
-        elseif math.floor(label_x) > pole_x then
-            label_x = label_x + fontwidth                                               -- right if label is to the right of the pole
-        else
-            label_x = label_x - (fontwidth / 2)                                         -- centre if the label is on the pole
-        end
-        if label_y < pole_y then                                                        -- top has to be different for labels above the pole and below the pole
-            label_y = label_y - fontheight
+        if Stat_Axes[Stat_Names[i]] == 90 or Stat_Axes[Stat_Names[i]] == 270 then
+            label_x = label_x - (fontwidth / 2)
+            if Stat_Axes[Stat_Names[i]] == 270 then
+                label_y = label_y - fontheight
+            end
+        elseif Stat_Axes[Stat_Names[i]] > 90 and Stat_Axes[Stat_Names[i]] < 270 then
+            label_x = label_x - fontwidth
+            label_y = label_y - (fontheight / 2)
+        elseif Stat_Axes[Stat_Names[i]] > 270 or Stat_Axes[Stat_Names[i]] < 90 then
+            label_y = label_y - (fontheight / 2)
         end
         WindowText(
             My_Window.id,                                                           -- my window's id
