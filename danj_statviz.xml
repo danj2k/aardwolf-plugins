@@ -292,7 +292,7 @@ local function train_capture_callback(
         if string.find(v, ":") then                                                     -- we're only interested in lines with a colon
             for i = 1, 6 do
                 if string.find(v, Stat_FullNames[i]) then
-                    _, _, current, maximum = string.find(v, "(%d+)%s+(%d+)*?$")
+                    _, _, current, maximum = string.find(v, "(%d+)%s+(%d+)%*?$")
                     Stat_Values[Stat_Names[i]].current = current
                     Stat_Values[Stat_Names[i]].maximum = maximum
                 end
