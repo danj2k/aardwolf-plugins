@@ -113,7 +113,7 @@ local function draw_plot_area()
         left = 0,
         right = 0
     }
-    local fontheight, fontwidth
+    local fontheight, fontwidth, fontdescent
     local axis_x, axis_y
     local r, phi1, phi2, stat1, stat2
     local gridfrom_x, gridfrom_y, gridto_x, gridto_y
@@ -125,6 +125,11 @@ local function draw_plot_area()
         My_Window.id,
         "f",                                        -- id of the font loaded earlier
         1                                           -- this specifies we want to know height
+    )
+    fontdescent = WindowFontInfo(                   -- get the font descent (pixels below baseline)
+        My_Window.id,                               -- my window's id
+        "f",                                        -- id of the font loaded earlier
+        3                                           -- this specifies we want to know descent
     )
     plotarea.top    =   My_Window.bodytop + 20 + fontheight     -- allow space for top axis label
     plotarea.bottom =   My_Window.bodybottom - 20 - fontheight  -- allow space for bottom axis label
@@ -193,9 +198,10 @@ local function draw_plot_area()
                 label_y = label_y - fontheight
             end
         elseif Stat_Axes[Stat_Names[i]] > 90 and Stat_Axes[Stat_Names[i]] < 270 then
-            label_x = label_x - fontwidth
+            label_x = label_x - fontwidth - fontdescent
             label_y = label_y - (fontheight / 2)
         elseif Stat_Axes[Stat_Names[i]] > 270 or Stat_Axes[Stat_Names[i]] < 90 then
+            label_x = label_x + fontdescent
             label_y = label_y - (fontheight / 2)
         end
         WindowText(
