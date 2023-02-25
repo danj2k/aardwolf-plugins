@@ -6,6 +6,8 @@ This plugin allows you to visualize the 6 base trained stats (STR, INT, WIS, DEX
 
 ![Screenshot of the stats visualization plugin](danj_statviz_screenshot.png)
 
+The gridlines represent percentages of the maximum you can currently train that stat to, as indicated by the output of `train`. Gridlines are displayed at 20% intervals.
+
 * `sv on` turns it on and updates it from `train` output.
 * `sv off` turns it off.
 * `sv update` updates it from `train` output if you already have the mini window open.
