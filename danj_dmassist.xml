@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 <!DOCTYPE muclient>
 
-<!-- Plugin "Danj_DMAssist" written by Danj 2023-02-25 -->
+<!-- Plugin "Danj_DMAssist" written by Danj 2023-02-26 -->
 
 <muclient>
-    <plugin name="Danj_DMAssist" author="Danj" id="d53d2885c2414f3485797d20" language="Lua" purpose="Intelligently casts curse and dispel magic on a target, keeping track of status" save_state="y" date_written="2023-02-25" requires="4.90" version="1.0">
+    <plugin name="Danj_DMAssist" author="Danj" id="d53d2885c2414f3485797d20" language="Lua" purpose="Intelligently casts curse and dispel magic on a target, keeping track of status" save_state="y" date_written="2023-02-26" requires="4.90" version="1.01">
 
     </plugin>
 
@@ -15,9 +15,9 @@ require "aardwolf_colors"
 require "wrapped_captures"
 require "gmcphelper"
 
--- Intelligently cast curse and dispel magic, keeping track of success and failures and character status
+-- Intelligently cast curse and dispel magic/dampening field, keeping track of success and failures and character status
 function Dm(target)
-    local myState
+    local myState, myClasses, dispel_command
 
     target = target or ""
 
@@ -44,6 +44,8 @@ function Dm(target)
             DeleteTrigger("dispel_unaffected")
             DeleteTrigger("dispel_fail")
             DeleteTrigger("dispel_succeed")
+            DeleteTrigger("dispel_lost_conc")
+            DeleteTrigger("dampening_lost_conc")
             return
         end
     end
@@ -113,6 +115,40 @@ function Dm(target)
         ))
         SetTriggerOption(
             "curse_succeed",
+            "send_to",
+            sendto.script
+        )
+    end
+    if IsTrigger("dispel_lost_conc") ~= 0 then
+        check(AddTrigger(
+            "dispel_lost_conc",
+            "(?:^You lost your concentration while trying to cast dispel magic.$)",
+            "require \"aardwolf_colors\"\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Lost concentration while trying to cast dispel magic.\")",
+            trigger_flag.Enabled + trigger_flag.RegularExpression,
+            custom_colour.NoChange,
+            0,
+            "",
+            ""
+        ))
+        SetTriggerOption(
+            "dispel_lost_conc",
+            "send_to",
+            sendto.script
+        )
+    end
+    if IsTrigger("dampening_lost_conc") ~= 0 then
+        check(AddTrigger(
+            "dampening_lost_conc",
+            "(?:^You lost your concentration while trying to cast dampening field.$)",
+            "require \"aardwolf_colors\"\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Lost concentration while trying to cast dampening field.\")",
+            trigger_flag.Enabled + trigger_flag.RegularExpression,
+            custom_colour.NoChange,
+            0,
+            "",
+            ""
+        ))
+        SetTriggerOption(
+            "dampening_lost_conc",
             "send_to",
             sendto.script
         )
@@ -207,9 +243,15 @@ function Dm(target)
     if not Curse_Success then
         Send("c curse " .. target)
     end
-    -- do we need to dispel magic?
+    myClasses = gmcp("char.base.classes") -- check our classes to see if we want to cast dispel magic or dampening field
+    if string.find(myClasses, "6") then
+        dispel_command = "c 'dampening field'"  -- we have psi class so we should use dampening field
+    else
+        dispel_command = "c 'dispel magic'"
+    end
+    -- do we need to dispel magic/dampening field?
     if not Dispel_NA then
-        Send("c 'dispel magic' " .. target)
+        Send(dispel_command .. " " .. target)
     end
 
     -- if we didn't do either, let the user know
@@ -222,8 +264,8 @@ end
 function Dm_help()
     ColourNote("orange", "", "Dispel Magic assistant help")
     ColourNote("orange", "", "===========================")
-    ColourNote("orange", "", "dm                -- Intelligently cast curse and dispel magic on your current target.")
-    ColourNote("orange", "", "dm <target>       -- Intelligently cast curse and dispel magic on a named target.")
+    ColourNote("orange", "", "dm                -- Intelligently cast curse and dispel magic (or dampening field) on your current target.")
+    ColourNote("orange", "", "dm <target>       -- Intelligently cast curse and dispel magic (or dampening field) on a named target.")
 end
 
 -- On plugin install, display help information and set up aliases.
@@ -269,6 +311,8 @@ function OnPluginDisable()
     DeleteTrigger("dispel_unaffected")
     DeleteTrigger("dispel_fail")
     DeleteTrigger("dispel_succeed")
+    DeleteTrigger("dispel_lost_conc")
+    DeleteTrigger("dampening_lost_conc")
 end
 
 function OnPluginClose()
