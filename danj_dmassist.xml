@@ -4,7 +4,7 @@
 <!-- Plugin "Danj_DMAssist" written by Danj 2023-02-26 -->
 
 <muclient>
-    <plugin name="Danj_DMAssist" author="Danj" id="d53d2885c2414f3485797d20" language="Lua" purpose="Intelligently casts curse and dispel magic on a target, keeping track of status" save_state="y" date_written="2023-02-26" requires="4.90" version="1.01">
+    <plugin name="Danj_DMAssist" author="Danj" id="d53d2885c2414f3485797d20" language="Lua" purpose="Intelligently casts curse and dispel magic on a target, keeping track of status" save_state="y" date_written="2023-02-26" requires="4.90" version="1.02">
 
     </plugin>
 
@@ -46,6 +46,7 @@ function Dm(target)
             DeleteTrigger("dispel_succeed")
             DeleteTrigger("dispel_lost_conc")
             DeleteTrigger("dampening_lost_conc")
+            DeleteTrigger("dampening_unaffected")
             return
         end
     end
@@ -190,7 +191,7 @@ function Dm(target)
     if IsTrigger("dispel_unaffected") ~= 0 then
         check(AddTrigger(
             "dispel_unaffected",
-            "(?:^.* is already cursed.$)",
+            "(?:^.* is unaffected by your dispel magic.$)",
             "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
@@ -200,6 +201,23 @@ function Dm(target)
         ))
         SetTriggerOption(
             "dispel_unaffected",
+            "send_to",
+            sendto.script
+        )
+    end
+    if IsTrigger("dampening_unaffected") ~= 0 then
+        check(AddTrigger(
+            "dampening_unaffected",
+            "(?:^.* is unaffected by your dampening field.$)",
+            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
+            trigger_flag.Enabled + trigger_flag.RegularExpression,
+            custom_colour.NoChange,
+            0,
+            "",
+            ""
+        ))
+        SetTriggerOption(
+            "dampening_unaffected",
             "send_to",
             sendto.script
         )
@@ -313,6 +331,7 @@ function OnPluginDisable()
     DeleteTrigger("dispel_succeed")
     DeleteTrigger("dispel_lost_conc")
     DeleteTrigger("dampening_lost_conc")
+    DeleteTrigger("dampening_unaffected")
 end
 
 function OnPluginClose()
