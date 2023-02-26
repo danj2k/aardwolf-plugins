@@ -17,9 +17,9 @@ It's my first attempt at a MUSHclient plugin, so there are undoubtedly things th
 
 ## Danj_DMAssist
 
-This plugin intelligently manages the casting of curse and dispel magic. It's not automatic, it just keeps track of whether your curses and dispel magics have failed or succeeded and will not cast curse or dispel magic again depending on the outcome.
+This plugin intelligently manages the casting of curse and dispel magic (or dampening field if you have the Psionicist class). It's not automatic, it just keeps track of whether your curses and dispel magics have failed or succeeded and will not cast curse or dispel magic/dampening field again depending on the outcome.
 
-* `dm` will attempt to curse and dispel magic your current target. If you're not currently in combat, it returns an error.
-* `dm <target>` will attempt to curse and dispel magic the named target.
+* `dm` will attempt to curse and dispel magic (or dampening field) your current target. If you're not currently in combat, it returns an error.
+* `dm <target>` will attempt to curse and dispel magic (or dampening field) the named target.
 
 Although this is now working, there may still be some bugs, please report these in the Issues section on this GitHub giving as much information as possible.
