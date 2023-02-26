@@ -47,157 +47,212 @@ function Dm(target)
     end
 
     -- Temporary triggers
+    ColourNote("orange", "", "dmassist: Creating triggers.")
     if IsTrigger("curse_lost_conc") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating curse_lost_conc trigger.")
+        check(AddTrigger(
             "curse_lost_conc",
-            "^You lost your concentration while trying to cast curse.$",
-            "Curse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Lost concentration while trying to cast curse.\")",
+            "(?:^You lost your concentration while trying to cast curse.$)",
+            "require \"aardwolf_colors\"\nCurse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Lost concentration while trying to cast curse.\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "curse_lost_conc",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "curse_lost_conc",
+            "regexp",
+            true
         )
     end
     if IsTrigger("curse_already_cursed") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating curse_already_cursed trigger.")
+        check(AddTrigger(
             "curse_already_cursed",
-            "^.* is already cursed.$",
-            "Curse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Enemy is already cursed!\")",
+            "(?:^.* is already cursed.$)",
+            "require \"aardwolf_colors\"\nCurse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Enemy is already cursed!\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "curse_already_cursed",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "curse_already_cursed",
+            "regexp",
+            true
         )
     end
     if IsTrigger("curse_fail") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating curse_fail trigger.")
+        check(AddTrigger(
             "curse_fail",
-            "^You fail to curse .*$",
-            "Curse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Failed to curse enemy.\")",
+            "(?:^You fail to curse .*$)",
+            "require \"aardwolf_colors\"\nCurse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Failed to curse enemy.\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "curse_fail",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "curse_fail",
+            "regexp",
+            true
         )
     end
     if IsTrigger("curse_succeed") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating curse_succeed trigger.")
+        check(AddTrigger(
             "curse_succeed",
-            "^.* looks very uncomfortable.$",
-            "Curse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Curse succeeded!\")",
+            "(?:^.* looks very uncomfortable.$)",
+            "require \"aardwolf_colors\"\nCurse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Curse succeeded!\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "curse_succeed",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "curse_succeed",
+            "regexp",
+            true
         )
     end
     if IsTrigger("dispel_no_dispellable") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating dispel_no_dispellable trigger.")
+        check(AddTrigger(
             "dispel_no_dispellable",
-            "^No dispellable spells found.$",
-            "Dispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
+            "(?:^No dispellable spells found.$)",
+            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "dispel_no_dispellable",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "dispel_no_dispellable",
+            "regexp",
+            true
         )
     end
     if IsTrigger("dispel_no_spells") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating dispel_no_spells trigger.")
+        check(AddTrigger(
             "dispel_no_spells",
-            "^.* has no spells to dispel.$",
-            "Dispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
+            "(?:^.* has no spells to dispel.$)",
+            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "dispel_no_spells",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "dispel_no_spells",
+            "regexp",
+            true
         )
     end
     if IsTrigger("dispel_unaffected") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating dispel_unaffected trigger.")
+        check(AddTrigger(
             "dispel_unaffected",
-            "^.* is already cursed.$",
-            "Dispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
+            "(?:^.* is already cursed.$)",
+            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "dispel_unaffected",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "dispel_unaffected",
+            "regexp",
+            true
         )
     end
     if IsTrigger("dispel_fail") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating dispel_fail trigger.")
+        check(AddTrigger(
             "dispel_fail",
-            "^You failed.$",
-            "Dispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic attempt failed.\")",
+            "(?:^You failed.$)",
+            "require \"aardwolf_colors\"\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic attempt failed.\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "dispel_fail",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "dispel_fail",
+            "regexp",
+            true
         )
     end
     if IsTrigger("dispel_succeed") ~= 0 then
-        AddTrigger(
+        ColourNote("orange", "", "dmassist: Creating dispel_succeed trigger.")
+        check(AddTrigger(
             "dispel_succeed",
-            "^You dispelled %d+ spells? on .*.$",
-            "Dispel_Fail = false\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic succeeded!\")",
+            "(?:^You dispelled %d+ spells? on .*$)",
+            "require \"aardwolf_colors\"\nDispel_Fail = false\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic succeeded!\")",
             trigger_flag.Enabled,
             custom_colour.NoChange,
             0,
             "",
             ""
-        )
+        ))
         SetTriggerOption(
             "dispel_succeed",
             "send_to",
             sendto.script
+        )
+        SetTriggerOption(
+            "dispel_succeed",
+            "regexp",
+            true
         )
     end
 
@@ -215,7 +270,8 @@ end
 function Dm_help()
     ColourNote("orange", "", "Dispel Magic assistant help")
     ColourNote("orange", "", "===========================")
-    ColourNote("orange", "", "dm [target]       -- Intelligently cast curse and dispel magic on a target.")
+    ColourNote("orange", "", "dm                -- Intelligently cast curse and dispel magic on your current target.")
+    ColourNote("orange", "", "dm <target>       -- Intelligently cast curse and dispel magic on a named target.")
 end
 
 -- On plugin install, display help information and set up aliases.
