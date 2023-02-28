@@ -4,7 +4,7 @@
 <!-- Plugin "Danj_DMAssist" written by Danj 2023-02-26 -->
 
 <muclient>
-    <plugin name="Danj_DMAssist" author="Danj" id="d53d2885c2414f3485797d20" language="Lua" purpose="Intelligently casts curse and dispel magic on a target, keeping track of status" save_state="y" date_written="2023-02-26" requires="4.90" version="1.02">
+    <plugin name="Danj_DMAssist" author="Danj" id="d53d2885c2414f3485797d20" language="Lua" purpose="Intelligently casts curse and dispel magic on a target, keeping track of status" save_state="y" date_written="2023-02-28" requires="4.90" version="1.03">
 
     </plugin>
 
@@ -12,7 +12,6 @@
     <script>
         <![CDATA[
 require "aardwolf_colors"
-require "wrapped_captures"
 require "gmcphelper"
 
 -- Intelligently cast curse and dispel magic/dampening field, keeping track of success and failures and character status
@@ -26,6 +25,8 @@ function Dm(target)
     Curse_Success = Curse_Success or false
     Dispel_Fail = Dispel_Fail or false
     Dispel_NA = Dispel_NA or false
+    Command_Wait = Command_Wait or 0
+    Prev_Enemy = Prev_Enemy or ""
 
     myState = tonumber(gmcp("char.status.state"))                   -- check if we are fighting
     if myState ~= 8 then
@@ -33,6 +34,8 @@ function Dm(target)
         Curse_Success = false
         Dispel_Fail = false
         Dispel_NA = false
+        Command_Wait = 0
+        Prev_Enemy = ""
         if target == "" then                             -- if we are not fighting, user must specify target
             ColourNote("orange", "", "dmassist: not fighting and no target selected")
             DeleteTrigger("curse_lost_conc")                            -- delete temporary triggers
@@ -56,7 +59,7 @@ function Dm(target)
         check(AddTrigger(
             "curse_lost_conc",
             "(?:^You lost your concentration while trying to cast curse.$)",
-            "require \"aardwolf_colors\"\nCurse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Lost concentration while trying to cast curse.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nCurse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Lost concentration while trying to cast curse.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -73,7 +76,7 @@ function Dm(target)
         check(AddTrigger(
             "curse_already_cursed",
             "(?:^.* is already cursed.$)",
-            "require \"aardwolf_colors\"\nCurse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Enemy is already cursed!\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nCurse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Enemy is already cursed!\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -90,7 +93,7 @@ function Dm(target)
         check(AddTrigger(
             "curse_fail",
             "(?:^You fail to curse .*$)",
-            "require \"aardwolf_colors\"\nCurse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Failed to curse enemy.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nCurse_Fail = true\nCurse_Success = false\nColourNote(\"orange\", \"\", \"dmassist: Failed to curse enemy.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -107,7 +110,7 @@ function Dm(target)
         check(AddTrigger(
             "curse_succeed",
             "(?:^.* looks very uncomfortable.$)",
-            "require \"aardwolf_colors\"\nCurse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Curse succeeded!\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nCurse_Success = true\nCurse_Fail = false\nColourNote(\"orange\", \"\", \"dmassist: Curse succeeded!\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -124,7 +127,7 @@ function Dm(target)
         check(AddTrigger(
             "dispel_lost_conc",
             "(?:^You lost your concentration while trying to cast dispel magic.$)",
-            "require \"aardwolf_colors\"\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Lost concentration while trying to cast dispel magic.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Lost concentration while trying to cast dispel magic.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -141,7 +144,7 @@ function Dm(target)
         check(AddTrigger(
             "dampening_lost_conc",
             "(?:^You lost your concentration while trying to cast dampening field.$)",
-            "require \"aardwolf_colors\"\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Lost concentration while trying to cast dampening field.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Lost concentration while trying to cast dampening field.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -158,7 +161,7 @@ function Dm(target)
         check(AddTrigger(
             "dispel_no_dispellable",
             "(?:^No dispellable spells found.$)",
-            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -175,7 +178,7 @@ function Dm(target)
         check(AddTrigger(
             "dispel_no_spells",
             "(?:^.* has no spells to dispel.$)",
-            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Nothing to dispel.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -192,7 +195,7 @@ function Dm(target)
         check(AddTrigger(
             "dispel_unaffected",
             "(?:^.* is unaffected by your dispel magic.$)",
-            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -209,7 +212,7 @@ function Dm(target)
         check(AddTrigger(
             "dampening_unaffected",
             "(?:^.* is unaffected by your dampening field.$)",
-            "require \"aardwolf_colors\"\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_NA = true\nColourNote(\"orange\",\"\",\"dmassist: Target can't be dispelled.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -226,7 +229,7 @@ function Dm(target)
         check(AddTrigger(
             "dispel_fail",
             "(?:^You failed.$)",
-            "require \"aardwolf_colors\"\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic attempt failed.\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_Fail = true\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic attempt failed.\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -243,7 +246,7 @@ function Dm(target)
         check(AddTrigger(
             "dispel_succeed",
             "(?:^You dispelled \\d+ spells? on .*$)",
-            "require \"aardwolf_colors\"\nDispel_Fail = false\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic succeeded!\")",
+            "require \"aardwolf_colors\"\nCommand_Wait = Command_Wait - 1\nDispel_Fail = false\nColourNote(\"orange\",\"\",\"dmassist: Dispel magic succeeded!\")",
             trigger_flag.Enabled + trigger_flag.RegularExpression,
             custom_colour.NoChange,
             0,
@@ -257,24 +260,31 @@ function Dm(target)
         )
     end
 
-    -- do we need to curse?
-    if not Curse_Success then
-        Send("c curse " .. target)
-    end
-    myClasses = gmcp("char.base.classes") -- check our classes to see if we want to cast dispel magic or dampening field
-    if string.find(myClasses, "6") then
-        dispel_command = "c 'dampening field'"  -- we have psi class so we should use dampening field
+    -- are we waiting for something?
+    if Command_Wait < 1 then
+        Command_Wait = 0
+        -- do we need to curse?
+        if not Curse_Success then
+            Send("c curse " .. target)
+            Command_Wait = Command_Wait + 1
+        end
+        myClasses = gmcp("char.base.classes") -- check our classes to see if we want to cast dispel magic or dampening field
+        if string.find(myClasses, "6") then
+            dispel_command = "c 'dampening field'"  -- we have psi class so we should use dampening field
+        else
+            dispel_command = "c 'dispel magic'"
+        end
+        -- do we need to dispel magic/dampening field?
+        if not Dispel_NA then
+            Send(dispel_command .. " " .. target)
+            Command_Wait = Command_Wait + 1
+        end
+        -- if we didn't do either, let the user know
+        if Curse_Success and Dispel_NA then
+            ColourNote("orange","","dmassist: No curse/dispel magic action needed/applicable for this enemy!")
+        end
     else
-        dispel_command = "c 'dispel magic'"
-    end
-    -- do we need to dispel magic/dampening field?
-    if not Dispel_NA then
-        Send(dispel_command .. " " .. target)
-    end
-
-    -- if we didn't do either, let the user know
-    if Curse_Success and Dispel_NA then
-        ColourNote("orange","","dmassist: No curse/dispel magic action needed/applicable for this enemy!")
+        ColourNote("orange","","dmassist: Waiting for outcome of last attempt!")
     end
 end
 
@@ -314,6 +324,8 @@ function OnPluginInstall()
         sendto.script
     )
     Prev_State = 0
+    Prev_Enemy = ""
+    Command_Wait = 0
 end
 
 -- On plugin disable, remove aliases and triggers
@@ -340,20 +352,24 @@ end
 
 -- Receive GMCP broadcasts
 function OnPluginBroadcast(msg, id, name, text)
-    local myState
+    local myState, myEnemy
 
     if id == "3e7dedbe37e44942dd46d264" then                                -- message from the GMCP Handler
         if text == "char.status" then                                       -- the GMCP Handler plugin says "I got a new char.status!"
             myState = tonumber(gmcp("char.status.state"))
-            if myState == 8 and myState ~= Prev_State then                  -- fighting a new enemy
+            myEnemy = gmcp("char.status.enemy")
+            if (myState == 8 and myState ~= Prev_State) or (myEnemy ~= "" and myEnemy ~= Prev_Enemy) then                  -- fighting a new enemy
                 ColourNote("orange", "", "dmassist: Status change detected, fighting new enemy.")
                 Curse_Fail = false                                          -- reset curse and dispel status
                 Curse_Success = false
                 Dispel_Fail = false
                 Dispel_NA = false
+                Prev_Enemy = myEnemy
+                Command_Wait = 0
             end
             if myState ~= Prev_State then
                 Prev_State = myState
+                Prev_Enemy = myEnemy
             end
         end
     end
