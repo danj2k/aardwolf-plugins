@@ -4,7 +4,7 @@
 <!-- Plugin "Danj_StatViz" written by Danj 2023-02-25 -->
 
 <muclient>
-    <plugin name="Danj_StatViz" author="Danj" id="89201300979e4ceba2129e51" language="Lua" purpose="Displays the 6 basic stats on a spider graph" save_state="y" date_written="2023-02-25" requires="4.90" version="1.0">
+    <plugin name="Danj_StatViz" author="Danj" id="89201300979e4ceba2129e51" language="Lua" purpose="Displays the 6 basic stats on a spider graph" save_state="y" date_written="2023-02-25" requires="4.90" version="1.01">
 
     </plugin>
 
@@ -43,35 +43,6 @@ Stat_Axes = {
     LUK = 210
 }
 
--- Variables
--- Initial stat values
-Stat_Values = {
-    STR = {
-        current = 0,
-        maximum = 400
-    },
-    INT = {
-        current = 0,
-        maximum = 400
-    },
-    WIS = {
-        current = 0,
-        maximum = 400
-    },
-    DEX = {
-        current = 0,
-        maximum = 400
-    },
-    CON = {
-        current = 0,
-        maximum = 400
-    },
-    LUK = {
-        current = 0,
-        maximum = 400
-    }
-}
-
 -- This function converts polar coordinates (r, phi) to Cartesian coordinates (x,y).
 -- Note that phi is in degrees and runs clockwise from the horizontal axis.
 -- https://en.wikipedia.org/wiki/Polar_coordinate_system#Converting_between_polar_and_Cartesian_coordinates
@@ -85,6 +56,17 @@ local function polar_to_cartesian(
     x = r * math.cos(phi)   -- x = r cos phi
     y = r * math.sin(phi)   -- y = r sin phi
 
+    -- Rounding
+    if x == math.abs(x) then
+        x = math.floor(x + 0.5)
+    else
+        x = math.ceil(x - 0.5)
+    end
+    if y == math.abs(y) then
+        y = math.floor(y + 0.5)
+    else
+        y = math.ceil(y - 0.5)
+    end
     return x, y
 end
 
@@ -100,6 +82,9 @@ local function find_pole()
 
     pole_x = (My_Window.bodyright - My_Window.bodyleft) / 2                  -- centre of the window's body
     pole_y = ((My_Window.bodybottom - My_Window.bodytop) / 2) + fontheight   -- don't forget to offset for the top label
+
+    pole_x = math.floor(pole_x + 0.5)   -- don't forget to round, now we're rounding everything else!
+    pole_y = math.floor(pole_y + 0.5)
 
     return pole_x, pole_y
 end
@@ -221,6 +206,25 @@ local function plot_stats()
     local phi, r, x, y
     local pole_x, pole_y
     local polygon_points = ""
+    local suggest_sv_update = false
+
+    -- Check all stat values are sensible, reset them and print errors if they're not
+    for i = 1,6 do
+        if Stat_Values[Stat_Names[i]].current == nil then
+            Stat_Values[Stat_Names[i]].current = 0
+            ColourNote("orange", "", "statviz: current " .. Stat_Names[i] .. " had invalid value")
+            suggest_sv_update = true
+        end
+        if Stat_Values[Stat_Names[i]].maximum == nil then
+            Stat_Values[Stat_Names[i]].maximum = 400
+            ColourNote("orange", "", "statviz: maximum " .. Stat_Names[i] .. " had invalid value")
+            suggest_sv_update = true
+        end
+    end
+    if suggest_sv_update then
+        ColourNote("orange", "", "statviz: Try doing an sv update to re-capture your current and maximum stats.")
+        return
+    end
 
     pole_x, pole_y = find_pole()
     -- Calculations
@@ -230,14 +234,13 @@ local function plot_stats()
         x, y = polar_to_cartesian(r, phi)
         x = x + pole_x
         y = y + pole_y
-        x = math.floor(x+0.5)
-        y = math.floor(y+0.5)
         if polygon_points == "" then
             polygon_points = x .. "," .. y
         else
             polygon_points = polygon_points .. "," .. x .. "," .. y
         end
     end
+
     -- Draw our polygon
     WindowPolygon(
         My_Window.id,
@@ -292,7 +295,8 @@ local function train_capture_callback(
     end_line
 )
     local train_output = utils.split(strip_colours_from_styles(captured_styles), "\n")  -- strip colours and split the output into a table
-    local current, maximum
+    local current, maximum, existingWindows
+    local windowExists = false
 
     for k, v in pairs(train_output) do
         if string.find(v, ":") then                                                     -- we're only interested in lines with a colon
@@ -306,7 +310,20 @@ local function train_capture_callback(
         end
     end
 
-    if My_Window and My_Window.id then
+    -- the existence of My_Window and My_Window.id are not sufficient to confirm the window actually exists
+    -- list all windows
+
+    existingWindows = WindowList()
+
+    if existingWindows ~= nil then
+        for _, v in ipairs(existingWindows) do
+            if string.find(v,"Danj_StatViz") then
+                windowExists = true
+            end
+        end
+    end -- if any
+
+    if windowExists then
         my_draw()                   -- draw our window content
         My_Window:dress_window()    -- add the window dressing
     end
@@ -347,7 +364,7 @@ function Sv_help()
     ColourNote("orange", "", "sv help           -- display help information")
 end
 
--- On plugin install, display help information and set up aliases.
+-- On plugin install, display help information and set up aliases and variables.
 function OnPluginInstall()
     Sv_help()
     AddAlias(
@@ -398,6 +415,33 @@ function OnPluginInstall()
         "send_to",
         sendto.scriptafteromit
     )
+    -- Initial stat values
+    Stat_Values = {
+        STR = {
+            current = 0,
+            maximum = 400
+        },
+        INT = {
+            current = 0,
+            maximum = 400
+        },
+        WIS = {
+            current = 0,
+            maximum = 400
+        },
+        DEX = {
+            current = 0,
+            maximum = 400
+        },
+        CON = {
+            current = 0,
+            maximum = 400
+        },
+        LUK = {
+            current = 0,
+            maximum = 400
+        }
+    }
 end
 
 -- On plugin disable, remove the window and aliases
