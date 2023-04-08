@@ -4,7 +4,7 @@
 <!-- Plugin "Danj_SLALOM" written by Danj 2023-04-07 -->
 
 <muclient>
-    <plugin name="Danj_SLALOM" author="plugin_author" id="b600bd4e9db88da71ee620e3" language="Lua" purpose="plugin_desc" save_state="y" date_written="2023-04-07" requires="4.90" version="1.0">
+    <plugin name="Danj_SLALOM" author="plugin_author" id="b600bd4e9db88da71ee620e3" language="Lua" purpose="plugin_desc" save_state="y" date_written="2023-04-07" requires="4.90" version="1.02">
 
     </plugin>
 
@@ -23,7 +23,7 @@ function scan_capture_callback(
 )
     local scan_output = utils.split(strip_colours_from_styles(captured_styles), "\n")  -- strip colours and split the output into a table
     local direction = ""
-    local roomid
+    local zone
 
     for _, v in pairs(scan_output) do
         if string.find(v, "from here you see:") then
@@ -33,9 +33,13 @@ function scan_capture_callback(
     end
 
     if direction == "" then
+        zone = gmcp("room.info.zone")
         -- Couldn't find the leader!
         CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader '" .. Sla_Leader .. "' not found! Have you set the leader correctly with sla leader <charactername>?")
         ColourNote("magenta", "", "slalom: Leader '" .. Sla_Leader .. "' not found! Have you set the leader correctly with sla leader <charactername>?")
+        if zone == "icefall" then                                                       -- we're still in Icefall but we lost the leader, bug out to the slingshot
+            Execute("mapper goto " .. ICEFALL_SLINGSHOT)
+        end
         return
     else
         -- Leader found
@@ -43,7 +47,7 @@ function scan_capture_callback(
         if Sla_AtPinnacle and Sla_Direction == "" then
             Sla_Direction = string.gsub(direction, "%d", "")
         end
-        if Sla_AtPinnacle then
+        if Sla_AtPinnacle and not Sla_SlopeStarted then
             -- Make sure we are not following anyone
             Send("follow self")
             -- Turn autosac off
@@ -165,12 +169,12 @@ end
 -- Receive GMCP broadcasts
 function OnPluginBroadcast(msg, id, name, text)
     -- to message the user in the comm log do CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@MYOUR MESSAGE HERE")
-    local roomid, zone
+    local roomid, zone, myState
 
     if id == "3e7dedbe37e44942dd46d264" then                                -- message from the GMCP Handler
+        zone = gmcp("room.info.zone")
         if text == "room.info" then                                         -- the GMCP Handler plugin says "I got a new room.info!"
             roomid = tonumber(gmcp("room.info.num"))
-            zone = gmcp("room.info.zone")
             if roomid == ICEFALL_PINNACLE then                              -- we're at the Icefall Pinnacle
                 Sla_InIcefall = true
                 Sla_AtPinnacle = true
@@ -193,6 +197,11 @@ function OnPluginBroadcast(msg, id, name, text)
                 Sla_AtPinnacle = false
                 Sla_AtSlingshot = false
                 Sla_SlopeStarted = false
+            end
+        elseif text == "char.status" then
+            myState = tonumber(gmcp("char.status.state"))
+            if myState == 8 and zone == "icefall" then                      -- we're in Icefall and we're fighting
+                Sla_SlopeStarted = true
             end
         end
     end
