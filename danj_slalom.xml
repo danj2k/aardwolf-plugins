@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+
+<!-- Plugin "Danj_SLALOM" written by Danj 2023-04-07 -->
+
+<muclient>
+    <plugin name="Danj_SLALOM" author="plugin_author" id="b600bd4e9db88da71ee620e3" language="Lua" purpose="plugin_desc" save_state="y" date_written="2023-04-07" requires="4.90" version="1.0">
+
+    </plugin>
+
+    <!--  Script  -->
+        <script>
+        <![CDATA[
+require "aardwolf_colors"
+require "gmcphelper"
+require "wrapped_captures"
+
+-- scan capture callback
+function scan_capture_callback(
+    captured_styles,
+    start_line,
+    end_line
+)
+    local scan_output = utils.split(strip_colours_from_styles(captured_styles), "\n")  -- strip colours and split the output into a table
+    local direction = ""
+    local roomid
+
+    for _, v in pairs(scan_output) do
+        if string.find(v, "from here you see:") then
+            _, _, direction = string.find(v, "(%d?%s?[NESWUD])")
+            direction = string.lower(string.gsub(direction, "%s+", ""))
+        end
+    end
+
+    if direction == "" then
+        -- Couldn't find the leader!
+        CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader '" .. Sla_Leader .. "' not found! Have you set the leader correctly with sla leader <charactername>?")
+        ColourNote("magenta", "", "slalom: Leader '" .. Sla_Leader .. "' not found! Have you set the leader correctly with sla leader <charactername>?")
+        return
+    else
+        -- Leader found
+        -- Are we at the pinnacle? If so, this is also the slope direction
+        if Sla_AtPinnacle and Sla_Direction == "" then
+            Sla_Direction = string.gsub(direction, "%d", "")
+        end
+        if Sla_AtPinnacle then
+            -- Make sure we are not following anyone
+            Send("follow self")
+            -- Turn autosac off
+            Send("autosac off")
+        end
+        -- Let's go
+        -- but wait! if they are more than one room away don't move or you might die!
+        if string.find(direction, "%d") then
+            CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader '" .. Sla_Leader .. "' found " .. direction .. " of here - DANGER WILL ROBINSON! Not moving.")
+            ColourNote("magenta", "", "slalom: Leader '" .. Sla_Leader .. "' found " .. direction .. " of here - DANGER WILL ROBINSON! Not moving.")
+        else
+            CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader '" .. Sla_Leader .. "' found " .. direction .. " of here, moving.")
+            ColourNote("magenta", "", "slalom: Leader '" .. Sla_Leader .. "' found " .. direction .. " of here, moving.")
+            Send(direction)
+        end
+    end
+end
+
+-- SLALOM main function
+function Sla(leader, direction)
+    local groupMembers, leaderInGroup, leaderHere, roomid
+
+    leader = leader or ""
+    direction = direction or ""
+
+    -- Global variables
+    Sla_Leader = Sla_Leader or leader
+    Sla_Direction = Sla_Direction or direction
+    Sla_InIcefall = Sla_InIcefall or false
+    Sla_AtPinnacle = Sla_AtPinnacle or false
+    Sla_AtSlingshot = Sla_AtSlingshot or false
+
+    -- Was a leader and/or direction set this time?
+    if leader ~= "" then
+        Sla_Leader = string.gsub(leader, "^%l", string.upper)
+        CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader set to '" .. Sla_Leader .. "'.")
+        ColourNote("magenta", "", "slalom: Leader set to '" .. Sla_Leader .. "'.")
+        return
+    end
+    if direction ~= "" then
+        Sla_Direction = direction
+        CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Direction set to '" .. Sla_Direction .. "'.")
+        ColourNote("magenta", "", "slalom: Direction set to '" .. Sla_Direction .. "'.")
+    end
+    -- Are we in Icefall?
+    if not Sla_InIcefall then
+        -- No, run to the Icefall pinnacle
+        Execute("mapper goto " .. tostring(ICEFALL_PINNACLE))
+        return
+    end
+
+    -- We are in Icefall
+    -- Are we at the slingshot?
+    if Sla_AtSlingshot then
+        -- We're at the slingshot, we'll have told the user this in OnPluginBroadcast
+        Send("enter slingshot")
+        return
+    end
+
+    -- Do we know who the leader is?
+    if Sla_Leader == "" then
+        -- We don't, throw an error
+        CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader not set! Please set a leader using sla leader <charactername>")
+        ColourNote("magenta", "", "slalom: Leader not set! Please set a leader using sla leader <charactername>")
+        return
+    end
+
+    -- If a direction wasn't set and we're at the pinnacle and Sla_SlopeStarted is true then we need to clear the direction and set Sla_SlopeStarted to false
+    roomid = tonumber(gmcp("room.info.num"))
+    if direction == "" and roomid == ICEFALL_PINNACLE and Sla_SlopeStarted then
+        Sla_SlopeStarted = false
+        Sla_Direction = ""
+    end
+    -- Look for the leader
+    groupMembers = gmcp("group.members")
+    leaderInGroup = false
+    leaderHere = 0
+    for _,v in ipairs(groupMembers) do
+        if v.name == Sla_Leader then
+            leaderInGroup = true
+            leaderHere = tonumber(v.info.here)
+        end
+    end
+    -- Is the leader in the group?
+    if not leaderInGroup then
+        -- No, throw an error
+        CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: Leader '" .. Sla_Leader .. "' not in group! You must be in a group with the leader.")
+        ColourNote("magenta", "", "slalom: Leader '" .. Sla_Leader .. "' not in group! You must be in a group with the leader.")
+        return
+    end
+    -- Is the leader in the room?
+    if leaderHere == 0 then
+        -- No, follow the leader
+        -- Are we at the pinnacle and a slope direction was declared?
+        if roomid == ICEFALL_PINNACLE and Sla_Direction ~= "" then
+            -- Move in Sla_Direction
+            Send(Sla_Direction)
+            Sla_SlopeStarted = true
+            return
+        end
+        -- we're not at the pinnacle or no slope direction was declared
+        Capture.tagged_output(
+            "scan " .. Sla_Leader,
+            "{scan}",
+            "{/scan}",
+            false,
+            false,
+            false,
+            false,
+            scan_capture_callback,
+            nil,
+            scan_capture_callback
+        )
+    end
+
+    -- By this point, you're in the same room as the leader, you're not at the slingshot, so I guess everything else is up to you?
+end
+
+-- Receive GMCP broadcasts
+function OnPluginBroadcast(msg, id, name, text)
+    -- to message the user in the comm log do CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@MYOUR MESSAGE HERE")
+    local roomid, zone
+
+    if id == "3e7dedbe37e44942dd46d264" then                                -- message from the GMCP Handler
+        if text == "room.info" then                                         -- the GMCP Handler plugin says "I got a new room.info!"
+            roomid = tonumber(gmcp("room.info.num"))
+            zone = gmcp("room.info.zone")
+            if roomid == ICEFALL_PINNACLE then                              -- we're at the Icefall Pinnacle
+                Sla_InIcefall = true
+                Sla_AtPinnacle = true
+                Sla_AtSlingshot = false
+                if Sla_Leader ~= "" then
+                    CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: At Icefall pinnacle, type sla to follow the leader '" .. Sla_Leader .. "'.")
+                    ColourNote("magenta", "", "slalom: At Icefall pinnacle, type sla to follow the leader '" .. Sla_Leader .. "'.")
+                else
+                    CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: At Icefall pinnacle but no leader is set! Please set a leader using sla leader <charactername>")
+                    ColourNote("magenta", "", "slalom: At Icefall pinnacle but no leader is set! Please set a leader using sla leader <charactername>")
+                end
+            elseif roomid == ICEFALL_SLINGSHOT then                         -- we're at the Icefall Slingshot
+                Sla_InIcefall = true
+                Sla_AtPinnacle = false
+                Sla_AtSlingshot = true
+                CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@Mslalom: At Icefall slingshot, type sla to enter the slingshot.")
+                ColourNote("magenta", "", "slalom: At Icefall slingshot, type sla to enter the slingshot.")
+            elseif zone ~= "icefall" then
+                Sla_InIcefall = false
+                Sla_AtPinnacle = false
+                Sla_AtSlingshot = false
+                Sla_SlopeStarted = false
+            end
+        end
+    end
+end
+
+-- This function prints a help message.
+function Sla_help()
+    ColourNote("orange", "", "SLopes Assist: Leader Observation Machine")
+    ColourNote("orange", "", "=========================================")
+    ColourNote("orange", "", "NOTE: This plugin is for followers only.")
+    ColourNote("orange", "", "sla                    -- Advance to the next state in Icefall Slopes.")
+    ColourNote("orange", "", "sla leader <character> -- Set the name of the slope expedition leader.")
+    ColourNote("orange", "", "sla <direction>        -- Set the slope direction declared by the leader.")
+end
+
+-- On plugin install, display help information and set up aliases.
+function OnPluginInstall()
+    Sla_help()
+    AddAlias(
+        "sla_alias_statemachine",
+        "sla",
+        "Sla()",
+        alias_flag.Enabled,
+        ""
+    )
+    SetAliasOption(
+        "sla_alias_statemachine",
+        "send_to",
+        sendto.script
+    )
+    AddAlias(
+        "sla_alias_setleader",
+        "sla leader *",
+        "Sla(\"%1\", nil)",
+        alias_flag.Enabled,
+        ""
+    )
+    SetAliasOption(
+        "sla_alias_setleader",
+        "send_to",
+        sendto.script
+    )
+    AddAlias(
+        "sla_alias_setdirection",
+        "sla (n|north|e|east|s|south|w|west)",
+        "Sla(nil, \"%1\")",
+        alias_flag.Enabled + alias_flag.RegularExpression,
+        ""
+    )
+    SetAliasOption(
+        "sla_alias_setdirection",
+        "send_to",
+        sendto.script
+    )
+    Sla_InIcefall = Sla_InIcefall or false
+    Sla_AtPinnacle = Sla_AtPinnacle or false
+    Sla_AtSlingshot = Sla_AtSlingshot or false
+    Sla_SlopeStarted = Sla_SlopeStarted or false
+    Sla_Leader = Sla_Leader or ""
+    Sla_Direction = Sla_Direction or ""
+    ICEFALL_PINNACLE = 38813                    -- roomid for Icefall pinnacle
+    ICEFALL_SLINGSHOT = 38719                   -- roomid for Icefall slingshot
+end
+
+-- On plugin disable, remove aliases and triggers
+function OnPluginDisable()
+    DeleteAlias("sla_alias_statemachine")
+    DeleteAlias("sla_alias_setleader")
+    DeleteAlias("sla_alias_setdirection")
+end
+
+function OnPluginClose()
+    OnPluginDisable()
+end
+        ]]>
+    </script>
+</muclient>
