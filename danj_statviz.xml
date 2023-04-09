@@ -4,7 +4,7 @@
 <!-- Plugin "Danj_StatViz" written by Danj 2023-02-25 -->
 
 <muclient>
-    <plugin name="Danj_StatViz" author="Danj" id="89201300979e4ceba2129e51" language="Lua" purpose="Displays the 6 basic stats on a spider graph" save_state="y" date_written="2023-02-25" requires="4.90" version="1.01">
+    <plugin name="Danj_StatViz" author="Danj" id="89201300979e4ceba2129e51" language="Lua" purpose="Displays the 6 basic stats on a spider graph" save_state="y" date_written="2023-02-25" requires="4.90" version="1.02">
 
     </plugin>
 
@@ -294,9 +294,17 @@ local function train_capture_callback(
     start_line,
     end_line
 )
-    local train_output = utils.split(strip_colours_from_styles(captured_styles), "\n")  -- strip colours and split the output into a table
+
+    local train_output
     local current, maximum, existingWindows
     local windowExists = false
+
+    if captured_styles ~= nil then
+        train_output = utils.split(strip_colours_from_styles(captured_styles), "\n")    -- strip colours and split the output into a table
+    else
+        ColourNote("orange", "", "statviz: Could not capture train output. Please ensure you are connected and logged in to Aardwolf MUD.")
+        return
+    end
 
     for k, v in pairs(train_output) do
         if string.find(v, ":") then                                                     -- we're only interested in lines with a colon
